@@ -100,6 +100,7 @@ LICENSE file.
     <orientdb.version>2.2.37</orientdb.version>-->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <redis.version>2.9.0</redis.version>
+    <tracer.version>1.0.0</tracer.version>
     <!--<riak.version>2.0.5</riak.version>
     <rocksdb.version>5.11.3</rocksdb.version>
     <s3.version>1.10.20</s3.version>
@@ -155,6 +156,7 @@ LICENSE file.
     <module>orientdb</module>
     <module>rados</module>-->
     <module>redis</module>
+    <module>tracer</module>
     <!--<module>rest</module>
     <module>riak</module>
     <module>rocksdb</module>
