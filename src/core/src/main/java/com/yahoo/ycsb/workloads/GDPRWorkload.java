@@ -90,7 +90,7 @@ public class GDPRWorkload extends Workload {
   /**
    * Default number of fields in a record.
    */
-  public static final String FIELD_COUNT_PROPERTY_DEFAULT = "10";
+  public static final String FIELD_COUNT_PROPERTY_DEFAULT = "8";
   
   private List<String> fieldnames;
 
@@ -621,7 +621,7 @@ public class GDPRWorkload extends Workload {
     }
 
     fieldchooser = new UniformLongGenerator(0, fieldcount - 1);
-    metadatachooser = new UniformLongGenerator(1, 8);
+    metadatachooser = new UniformLongGenerator(1, fieldcount - 1);
 
     if (scanlengthdistrib.compareTo("uniform") == 0) {
       scanlength = new UniformLongGenerator(minscanlength, maxscanlength);
@@ -696,32 +696,32 @@ public class GDPRWorkload extends Workload {
           objlength = Integer.parseInt(OBJECTIVE_COUNT_PROPERTY_DEFAULT);
         }
         for (x = 0; x < objlength; x++) {
-          fieldvalues[i].add("obj" + Integer.toString(x));
+          fieldvalues[i].add("purpose" + Integer.toString(x));
         }
         break;
-      case 4: fieldnames.add("DEC");
-        int declength =
-            Integer.parseInt(p.getProperty(DECISION_COUNT_PROPERTY, DECISION_COUNT_PROPERTY_DEFAULT));
-        fieldvalues[i] = new ArrayList<String>();
-        if (declength <= 0) {
-          declength = Integer.parseInt(DECISION_COUNT_PROPERTY_DEFAULT);
-        }
-        for (x = 0; x < declength; x++) {
-          fieldvalues[i].add("dec" + Integer.toString(x));
-        }
-        break;
-      case 5: fieldnames.add("ACL"); 
-        int acllength =
-            Integer.parseInt(p.getProperty(ACL_COUNT_PROPERTY, ACL_COUNT_PROPERTY_DEFAULT));
-        fieldvalues[i] = new ArrayList<String>();
-        if (acllength <= 0) {
-          acllength = Integer.parseInt(ACL_COUNT_PROPERTY_DEFAULT);
-        }
-        for (x = 0; x < acllength; x++) {
-          fieldvalues[i].add("acl" + Integer.toString(x));
-        }
-        break;
-      case 6: fieldnames.add("SHR");
+      // case 4: fieldnames.add("DEC");
+      //   int declength =
+      //       Integer.parseInt(p.getProperty(DECISION_COUNT_PROPERTY, DECISION_COUNT_PROPERTY_DEFAULT));
+      //   fieldvalues[i] = new ArrayList<String>();
+      //   if (declength <= 0) {
+      //     declength = Integer.parseInt(DECISION_COUNT_PROPERTY_DEFAULT);
+      //   }
+      //   for (x = 0; x < declength; x++) {
+      //     fieldvalues[i].add("dec" + Integer.toString(x));
+      //   }
+      //   break;
+      // case 5: fieldnames.add("ACL"); 
+      //   int acllength =
+      //       Integer.parseInt(p.getProperty(ACL_COUNT_PROPERTY, ACL_COUNT_PROPERTY_DEFAULT));
+      //   fieldvalues[i] = new ArrayList<String>();
+      //   if (acllength <= 0) {
+      //     acllength = Integer.parseInt(ACL_COUNT_PROPERTY_DEFAULT);
+      //   }
+      //   for (x = 0; x < acllength; x++) {
+      //     fieldvalues[i].add("acl" + Integer.toString(x));
+      //   }
+      //   break;
+      case 4: fieldnames.add("SHR");
         int shrlength =
             Integer.parseInt(p.getProperty(SHARED_COUNT_PROPERTY, SHARED_COUNT_PROPERTY_DEFAULT));
         fieldvalues[i] = new ArrayList<String>();
@@ -729,10 +729,10 @@ public class GDPRWorkload extends Workload {
           shrlength = Integer.parseInt(SHARED_COUNT_PROPERTY_DEFAULT);
         }
         for (x = 0; x < shrlength; x++) {
-          fieldvalues[i].add("shr" + Integer.toString(x));
+          fieldvalues[i].add("user" + Integer.toString(x)); // to associating sharing w/ users
         }
         break;
-      case 7: fieldnames.add("SRC");
+      case 5: fieldnames.add("SRC");
         int srclength =
             Integer.parseInt(p.getProperty(SOURCE_COUNT_PROPERTY, SOURCE_COUNT_PROPERTY_DEFAULT));
         fieldvalues[i] = new ArrayList<String>();
@@ -743,16 +743,19 @@ public class GDPRWorkload extends Workload {
           fieldvalues[i].add("src" + Integer.toString(x));
         }
         break;
-      case 8: fieldnames.add("CAT");
-        int catlength =
-            Integer.parseInt(p.getProperty(CATEGORY_COUNT_PROPERTY, CATEGORY_COUNT_PROPERTY_DEFAULT));
+      case 6: fieldnames.add("LOG");
         fieldvalues[i] = new ArrayList<String>();
-        if (catlength <= 0) {
-          catlength = Integer.parseInt(CATEGORY_COUNT_PROPERTY_DEFAULT);
-        }
-        for (x = 0; x < catlength; x++) {
-          fieldvalues[i].add("cat" + Integer.toString(x));
-        }
+        fieldvalues[i].add("true");
+        fieldvalues[i].add("false");
+        // int catlength =
+        //     Integer.parseInt(p.getProperty(CATEGORY_COUNT_PROPERTY, CATEGORY_COUNT_PROPERTY_DEFAULT));
+        // fieldvalues[i] = new ArrayList<String>();
+        // if (catlength <= 0) {
+        //   catlength = Integer.parseInt(CATEGORY_COUNT_PROPERTY_DEFAULT);
+        // }
+        // for (x = 0; x < catlength; x++) {
+        //   fieldvalues[i].add("log" + Integer.toString(x));
+        // }
         break;
       default: fieldnames.add("Data");
               fieldvalues[i]=new ArrayList<>();
@@ -810,7 +813,7 @@ public class GDPRWorkload extends Workload {
     StringBuilder sb = new StringBuilder(size);
     //sb.append(fieldkey);
     //sb.append('=');
-    if (fieldnum == 9) { //field10 is data; rest are metadata
+    if (fieldnum == 7) { //field8 is data; rest are metadata
       while (sb.length() < size) {
         sb.append(String.valueOf(keynum));
         sb.append(sb.toString().hashCode());
@@ -1118,6 +1121,12 @@ public class GDPRWorkload extends Workload {
     // pick another field to be updated
     int fieldnum = metadatachooser.nextValue().intValue();
     String fieldkey = fieldnames.get(fieldnum);
+
+    // do not update USR, SRC and DATA
+    while (fieldkey == "USR" || fieldkey == "SRC" || fieldkey == "Data") {
+      fieldnum = metadatachooser.nextValue().intValue();
+      fieldkey = fieldnames.get(fieldnum);
+    }
 
     // new value for another meta data field
     String metadatavalue = buildDeterministicValue(keynum, fieldnum, fieldkey);

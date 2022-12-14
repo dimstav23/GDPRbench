@@ -98,6 +98,7 @@ DATABASES = {
     "orientdb"     : "com.yahoo.ycsb.db.OrientDBClient",
     "rados"        : "com.yahoo.ycsb.db.RadosClient",
     "redis"        : "com.yahoo.ycsb.db.RedisClient",
+    "tracer"       : "com.yahoo.ycsb.db.TracerClient",
     "rest"         : "com.yahoo.ycsb.webservice.rest.RestClient",
     "riak"         : "com.yahoo.ycsb.db.riak.RiakKVClient",
     "rocksdb"      : "com.yahoo.ycsb.db.rocksdb.RocksDBClient",
