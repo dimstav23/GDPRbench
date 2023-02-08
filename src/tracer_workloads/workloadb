@@ -25,8 +25,8 @@ tracer.file=/home/dimitrios/GDPRuler/workload_traces/workloadb
 mockvalues=true
 writeallfields=true
 
-recordcount=1000
-operationcount=1000
+recordcount=1000000
+operationcount=10000000
 workload=com.yahoo.ycsb.workloads.CoreWorkload
 
 readallfields=true
