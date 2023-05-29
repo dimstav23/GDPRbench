@@ -91,7 +91,7 @@ public class GDPRWorkload extends Workload {
    * Default number of fields in a record.
    */
   public static final String FIELD_COUNT_PROPERTY_DEFAULT = "8";
-  
+
   private List<String> fieldnames;
 
   private List<String>[] fieldvalues;
@@ -159,7 +159,7 @@ public class GDPRWorkload extends Workload {
   public static final String READ_ALL_FIELDS_PROPERTY_DEFAULT = "true";
 
   protected boolean readallfields;
-  
+
   /**
    * The name of the property for deciding whether to write one field (false) or all fields (true)
    * of a record.
@@ -178,13 +178,13 @@ public class GDPRWorkload extends Workload {
   public static final String READ_LOG_PROPERTY_DEFAULT = "true";
 
   protected boolean readlog;
-  
+
   public static final String CHECK_COMPL_PROPERTY = "checkcompliance";
 
   public static final String CHECK_COMPL_PROPERTY_DEFAULT = "true";
 
   protected boolean checkcompliance;
-  
+
   public static final String PURPOSE_COUNT_PROPERTY = "purcount";
 
   public static final String PURPOSE_COUNT_PROPERTY_DEFAULT = "100";
@@ -196,6 +196,12 @@ public class GDPRWorkload extends Workload {
   public static final String OBJECTIVE_COUNT_PROPERTY = "objcount";
 
   public static final String OBJECTIVE_COUNT_PROPERTY_DEFAULT = "100";
+
+  public static final String OBJECTIVE_START_PROPERTY = "objstart";
+
+  public static final String OBJECTIVE_START_PROPERTY_DEFAULT = "0";
+
+  protected int objstart;
 
   public static final String DECISION_COUNT_PROPERTY = "deccount";
 
@@ -460,6 +466,29 @@ public class GDPRWorkload extends Workload {
    */
   public static final String FIELD_NAME_PREFIX_DEFAULT = "myfield";
 
+  /**
+   * The default value for the monitorproportion property.
+   */
+  public static final String MONITOR_PROPORTION_PROPERTY_DEFAULT = "0.0";
+
+  public static final String MONITOR_PROPORTION_PROPERTY = "monitorproportion";
+
+  protected String monitorproportion;
+
+  public static final String SHARE_WITH_ALL_PROPERTY_DEFAULT = "false";
+
+  public static final String SHARE_WITH_ALL_PROPERTY = "sharewithall";
+
+  protected boolean sharewithall;
+
+  public static final String NO_TTL_PROPERTY_DEFAULT = "true";
+
+  public static final String NO_TTL_PROPERTY = "nottl";
+
+  protected boolean nottl;
+
+  protected int usrlength;
+
   protected NumberGenerator keysequence;
   protected DiscreteGenerator operationchooser;
   protected NumberGenerator keychooser;
@@ -513,7 +542,14 @@ public class GDPRWorkload extends Workload {
    */
   @Override
   public void init(Properties p) throws WorkloadException {
+    System.out.println("Initing GDPR workload");
     table = p.getProperty(TABLENAME_PROPERTY, TABLENAME_PROPERTY_DEFAULT);
+
+    monitorproportion = p.getProperty(MONITOR_PROPORTION_PROPERTY, MONITOR_PROPORTION_PROPERTY_DEFAULT);
+    sharewithall = Boolean.parseBoolean(p.getProperty(SHARE_WITH_ALL_PROPERTY, SHARE_WITH_ALL_PROPERTY_DEFAULT));
+    nottl = Boolean.parseBoolean(p.getProperty(NO_TTL_PROPERTY, NO_TTL_PROPERTY_DEFAULT));
+    usrlength = Integer.parseInt(p.getProperty(USER_COUNT_PROPERTY, USER_COUNT_PROPERTY_DEFAULT));
+    objstart = Integer.parseInt(p.getProperty(OBJECTIVE_START_PROPERTY, OBJECTIVE_START_PROPERTY_DEFAULT));
 
     fieldcount =
         Long.parseLong(p.getProperty(FIELD_COUNT_PROPERTY, FIELD_COUNT_PROPERTY_DEFAULT));
@@ -537,7 +573,7 @@ public class GDPRWorkload extends Workload {
 
     long insertstart =
         Long.parseLong(p.getProperty(INSERT_START_PROPERTY, INSERT_START_PROPERTY_DEFAULT));
-    long insertcount=
+    long insertcount =
         Integer.parseInt(p.getProperty(INSERT_COUNT_PROPERTY, String.valueOf(recordcount - insertstart)));
     // Confirm valid values for insertstart and insertcount in relation to recordcount
     if (recordcount < (insertstart + insertcount)) {
@@ -606,6 +642,7 @@ public class GDPRWorkload extends Workload {
       int opcount = Integer.parseInt(p.getProperty(Client.OPERATION_COUNT_PROPERTY));
       int expectednewkeys = (int) ((opcount) * insertproportion * 2.0); // 2 is fudge factor
 
+
       keychooser = new ScrambledZipfianGenerator(insertstart, insertstart + insertcount + expectednewkeys);
     } else if (requestdistrib.compareTo("latest") == 0) {
       keychooser = new SkewedLatestGenerator(transactioninsertkeysequence);
@@ -652,7 +689,7 @@ public class GDPRWorkload extends Workload {
   }
 
 
-/**
+  /**
    * Fill values for all fields.
    */
   private void populateValues(final Properties p) {
@@ -661,106 +698,142 @@ public class GDPRWorkload extends Workload {
     int x = 0;
     for (int i = 0; i < fieldcount; i++) {
       //fieldnames.add(fieldnameprefix + i);
-      switch(i) { 
-      case 0: fieldnames.add("PUR"); 
-        int purlength =
-            Integer.parseInt(p.getProperty(PURPOSE_COUNT_PROPERTY, PURPOSE_COUNT_PROPERTY_DEFAULT));
-        fieldvalues[i] = new ArrayList<String>();
-        if (purlength <= 0) {
-          purlength = Integer.parseInt(PURPOSE_COUNT_PROPERTY_DEFAULT);
-        }
-        for (x = 0; x < purlength; x++) {
-          fieldvalues[i].add("purpose" + Integer.toString(x));
-        }
-        break;
-      case 1: fieldnames.add("TTL");
-        fieldvalues[i]=new ArrayList<>(
-        Arrays.asList("30", "10000", "12000", "14000", "16000", "18000", "20000", "22000", "24000", "1000000"));
-        break;
-      case 2: fieldnames.add("USR"); 
-        int usrlength =
-            Integer.parseInt(p.getProperty(USER_COUNT_PROPERTY, USER_COUNT_PROPERTY_DEFAULT));
-        fieldvalues[i] = new ArrayList<String>();
-        if (usrlength <= 0) {
-          usrlength = Integer.parseInt(USER_COUNT_PROPERTY_DEFAULT);
-        }
-        for (x = 0; x < usrlength; x++) {
-          fieldvalues[i].add("user" + Integer.toString(x));
-        }
-        break;
-      case 3: fieldnames.add("OBJ"); 
-        int objlength =
-            Integer.parseInt(p.getProperty(OBJECTIVE_COUNT_PROPERTY, OBJECTIVE_COUNT_PROPERTY_DEFAULT));
-        fieldvalues[i] = new ArrayList<String>();
-        if (objlength <= 0) {
-          objlength = Integer.parseInt(OBJECTIVE_COUNT_PROPERTY_DEFAULT);
-        }
-        for (x = 0; x < objlength; x++) {
-          fieldvalues[i].add("purpose" + Integer.toString(x));
-        }
-        break;
-      // case 4: fieldnames.add("DEC");
-      //   int declength =
-      //       Integer.parseInt(p.getProperty(DECISION_COUNT_PROPERTY, DECISION_COUNT_PROPERTY_DEFAULT));
-      //   fieldvalues[i] = new ArrayList<String>();
-      //   if (declength <= 0) {
-      //     declength = Integer.parseInt(DECISION_COUNT_PROPERTY_DEFAULT);
-      //   }
-      //   for (x = 0; x < declength; x++) {
-      //     fieldvalues[i].add("dec" + Integer.toString(x));
-      //   }
-      //   break;
-      // case 5: fieldnames.add("ACL"); 
-      //   int acllength =
-      //       Integer.parseInt(p.getProperty(ACL_COUNT_PROPERTY, ACL_COUNT_PROPERTY_DEFAULT));
-      //   fieldvalues[i] = new ArrayList<String>();
-      //   if (acllength <= 0) {
-      //     acllength = Integer.parseInt(ACL_COUNT_PROPERTY_DEFAULT);
-      //   }
-      //   for (x = 0; x < acllength; x++) {
-      //     fieldvalues[i].add("acl" + Integer.toString(x));
-      //   }
-      //   break;
-      case 4: fieldnames.add("SHR");
-        int shrlength =
-            Integer.parseInt(p.getProperty(SHARED_COUNT_PROPERTY, SHARED_COUNT_PROPERTY_DEFAULT));
-        fieldvalues[i] = new ArrayList<String>();
-        if (shrlength <= 0) {
-          shrlength = Integer.parseInt(SHARED_COUNT_PROPERTY_DEFAULT);
-        }
-        for (x = 0; x < shrlength; x++) {
-          fieldvalues[i].add("user" + Integer.toString(x)); // to associating sharing w/ users
-        }
-        break;
-      case 5: fieldnames.add("SRC");
-        int srclength =
-            Integer.parseInt(p.getProperty(SOURCE_COUNT_PROPERTY, SOURCE_COUNT_PROPERTY_DEFAULT));
-        fieldvalues[i] = new ArrayList<String>();
-        if (srclength <= 0) {
-          srclength = Integer.parseInt(SOURCE_COUNT_PROPERTY_DEFAULT);
-        }
-        for (x = 0; x < srclength; x++) {
-          fieldvalues[i].add("src" + Integer.toString(x));
-        }
-        break;
-      case 6: fieldnames.add("LOG");
-        fieldvalues[i] = new ArrayList<String>();
-        fieldvalues[i].add("true");
-        fieldvalues[i].add("false");
-        // int catlength =
-        //     Integer.parseInt(p.getProperty(CATEGORY_COUNT_PROPERTY, CATEGORY_COUNT_PROPERTY_DEFAULT));
-        // fieldvalues[i] = new ArrayList<String>();
-        // if (catlength <= 0) {
-        //   catlength = Integer.parseInt(CATEGORY_COUNT_PROPERTY_DEFAULT);
-        // }
-        // for (x = 0; x < catlength; x++) {
-        //   fieldvalues[i].add("log" + Integer.toString(x));
-        // }
-        break;
-      default: fieldnames.add("Data");
-              fieldvalues[i]=new ArrayList<>();
-              fieldvalues[i].add("val10");
-              break;
+      switch (i) {
+        case 0:
+          fieldnames.add("PUR");
+          int purlength =
+              Integer.parseInt(p.getProperty(PURPOSE_COUNT_PROPERTY, PURPOSE_COUNT_PROPERTY_DEFAULT));
+          fieldvalues[i] = new ArrayList<String>();
+          if (purlength <= 0) {
+            purlength = Integer.parseInt(PURPOSE_COUNT_PROPERTY_DEFAULT);
+          }
+          for (x = 0; x < purlength; x++) {
+            fieldvalues[i].add("purpose" + Integer.toString(x));
+          }
+          break;
+        case 1:
+          fieldnames.add("TTL");
+          if (nottl) {
+            fieldvalues[i] = new ArrayList<>(
+                Arrays.asList("0"));
+          } else {
+            fieldvalues[i] = new ArrayList<>(
+                Arrays.asList("30", "10000", "12000", "14000", "16000", "18000", "20000", "22000", "24000", "1000000"));
+          }
+          break;
+        case 2:
+          fieldnames.add("USR");
+          fieldvalues[i] = new ArrayList<String>();
+          if (usrlength <= 0) {
+            usrlength = Integer.parseInt(USER_COUNT_PROPERTY_DEFAULT);
+          }
+          for (x = 0; x < usrlength; x++) {
+            fieldvalues[i].add("user" + Integer.toString(x));
+          }
+          break;
+        case 3:
+          fieldnames.add("OBJ");
+          int objlength =
+              Integer.parseInt(p.getProperty(OBJECTIVE_COUNT_PROPERTY, OBJECTIVE_COUNT_PROPERTY_DEFAULT));
+          fieldvalues[i] = new ArrayList<String>();
+          if (objlength <= 0) {
+            objlength = Integer.parseInt(OBJECTIVE_COUNT_PROPERTY_DEFAULT);
+          }
+          for (x = objstart; x < objstart + objlength; x++) {
+            fieldvalues[i].add("purpose" + Integer.toString(x));
+          }
+          break;
+        // case 4: fieldnames.add("DEC");
+        //   int declength =
+        //       Integer.parseInt(p.getProperty(DECISION_COUNT_PROPERTY, DECISION_COUNT_PROPERTY_DEFAULT));
+        //   fieldvalues[i] = new ArrayList<String>();
+        //   if (declength <= 0) {
+        //     declength = Integer.parseInt(DECISION_COUNT_PROPERTY_DEFAULT);
+        //   }
+        //   for (x = 0; x < declength; x++) {
+        //     fieldvalues[i].add("dec" + Integer.toString(x));
+        //   }
+        //   break;
+        // case 5: fieldnames.add("ACL");
+        //   int acllength =
+        //       Integer.parseInt(p.getProperty(ACL_COUNT_PROPERTY, ACL_COUNT_PROPERTY_DEFAULT));
+        //   fieldvalues[i] = new ArrayList<String>();
+        //   if (acllength <= 0) {
+        //     acllength = Integer.parseInt(ACL_COUNT_PROPERTY_DEFAULT);
+        //   }
+        //   for (x = 0; x < acllength; x++) {
+        //     fieldvalues[i].add("acl" + Integer.toString(x));
+        //   }
+        //   break;
+        case 4:
+          fieldnames.add("SHR");
+          fieldvalues[i] = new ArrayList<String>();
+          StringBuilder sb = new StringBuilder();
+          if (sharewithall) {
+            for (x = 0; x < usrlength; x++) {
+              sb.append("user").append(x).append(",");
+            }
+            sb.deleteCharAt(sb.length() - 1); // delete the last comma
+            fieldvalues[i].add(sb.toString());
+          } else {
+            int shrlength =
+                Integer.parseInt(p.getProperty(SHARED_COUNT_PROPERTY, SHARED_COUNT_PROPERTY_DEFAULT));
+            if (shrlength <= 0) {
+              shrlength = Integer.parseInt(SHARED_COUNT_PROPERTY_DEFAULT);
+            }
+            for (x = 0; x < shrlength; x++) {
+              fieldvalues[i].add("user" + Integer.toString(x)); // to associating sharing w/ users
+            }
+          }
+          break;
+        case 5:
+          fieldnames.add("SRC");
+          int srclength =
+              Integer.parseInt(p.getProperty(SOURCE_COUNT_PROPERTY, SOURCE_COUNT_PROPERTY_DEFAULT));
+          fieldvalues[i] = new ArrayList<String>();
+          if (srclength <= 0) {
+            srclength = Integer.parseInt(SOURCE_COUNT_PROPERTY_DEFAULT);
+          }
+          for (x = 0; x < srclength; x++) {
+            fieldvalues[i].add("src" + Integer.toString(x));
+          }
+          break;
+        case 6:
+          fieldnames.add("LOG");
+          fieldvalues[i] = new ArrayList<String>();
+          double parsedLogProportion = Double.parseDouble(monitorproportion);
+          if (parsedLogProportion == 0) {
+            // No logs required.
+            fieldvalues[i].add("false");
+          } else {
+            int fractionIndex = monitorproportion.indexOf(".");
+            int fractionSize = monitorproportion.length() - fractionIndex - 1;
+            int totalLogValues = (int) Math.pow(10, fractionSize);
+            int logRequired = (int) (parsedLogProportion * totalLogValues);
+            for (int logIdx = 1; logIdx <= totalLogValues; logIdx++) {
+              if (logIdx <= logRequired) {
+                fieldvalues[i].add("true");
+              } else {
+                fieldvalues[i].add("false");
+              }
+            }
+          }
+          System.out.println("Log field values are: " + fieldvalues[i]);
+          // int catlength =
+          //     Integer.parseInt(p.getProperty(CATEGORY_COUNT_PROPERTY, CATEGORY_COUNT_PROPERTY_DEFAULT));
+          // fieldvalues[i] = new ArrayList<String>();
+          // if (catlength <= 0) {
+          //   catlength = Integer.parseInt(CATEGORY_COUNT_PROPERTY_DEFAULT);
+          // }
+          // for (x = 0; x < catlength; x++) {
+          //   fieldvalues[i].add("log" + Integer.toString(x));
+          // }
+          break;
+        default:
+          fieldnames.add("Data");
+          fieldvalues[i] = new ArrayList<>();
+          fieldvalues[i].add("val10");
+          break;
       }
     }
   }
@@ -791,7 +864,7 @@ public class GDPRWorkload extends Workload {
   private HashMap<String, ByteIterator> buildValues(long keynum, String key) {
     HashMap<String, ByteIterator> values = new HashMap<>();
 
-    for (int i=0; i< fieldnames.size(); i++) {
+    for (int i = 0; i < fieldnames.size(); i++) {
       ByteIterator data;
       String fieldkey = fieldnames.get(i);
       if (dataintegrity) {
@@ -820,14 +893,14 @@ public class GDPRWorkload extends Workload {
       }
       sb.setLength(size);
     } else {
-      sb.append(fieldvalues[fieldnum].get((int)keynum%fieldvalues[fieldnum].size()));
+      sb.append(fieldvalues[fieldnum].get((int) keynum % fieldvalues[fieldnum].size()));
     }
     return sb.toString();
   }
 
   private int buildTTLValue(long keynum) {
     // fieldvalue[1] = TTL
-    return Integer.parseInt(fieldvalues[1].get((int)keynum%fieldvalues[1].size()));
+    return Integer.parseInt(fieldvalues[1].get((int) keynum % fieldvalues[1].size()));
   }
 
   /**
@@ -846,7 +919,7 @@ public class GDPRWorkload extends Workload {
     Status status;
     int numOfRetries = 0;
     do {
-      status = db.insertTTL(table, dbkey, values, ttl);
+      status = db.insert(table, dbkey, values);
       if (null != status && status.isOk()) {
         break;
       }
@@ -883,14 +956,14 @@ public class GDPRWorkload extends Workload {
   @Override
   public boolean doTransaction(DB db, Object threadstate) {
     String operation = operationchooser.nextString();
-    if(operation == null) {
+    if (operation == null) {
       return false;
     }
 
     if (isFirst) {
       if (checkcompliance) {
         doTransactionCheckCompliance(db);
-      } 
+      }
       if (readlog) {
         doTransactionReadLog(db);
       }
@@ -898,44 +971,44 @@ public class GDPRWorkload extends Workload {
     }
 
     switch (operation) {
-    case "READMETAPURPOSE":
-      doTransactionReadMeta(db, 0);
-      break;
-    case "READMETAUSER":
-      doTransactionReadMeta(db, 2);
-      break;
-    case "READ":
-      doTransactionRead(db);
-      break;
-    case "UPDATEMETAPURPOSE":
-      doTransactionUpdateMeta(db, 0);
-      break;
-    case "UPDATEMETAUSER":
-      doTransactionUpdateMeta(db, 2);
-      break;
-    case "UPDATE":
-      doTransactionUpdate(db);
-      break;
-    case "INSERT":
-      doTransactionInsert(db);
-      break;
-    case "SCAN":
-      doTransactionScan(db);
-      break;
-    case "DELETEMETAPURPOSE":
-      doTransactionDeleteMeta(db, 0);
-      break;
-    case "DELETEMETAUSER":
-      doTransactionDeleteMeta(db, 2);
-      break;
-    case "DELETE":
-      doTransactionDelete(db);
-      break;
+      case "READMETAPURPOSE":
+        doTransactionReadMeta(db, 0);
+        break;
+      case "READMETAUSER":
+        doTransactionReadMeta(db, 2);
+        break;
+      case "READ":
+        doTransactionRead(db);
+        break;
+      case "UPDATEMETAPURPOSE":
+        doTransactionUpdateMeta(db, 0);
+        break;
+      case "UPDATEMETAUSER":
+        doTransactionUpdateMeta(db, 2);
+        break;
+      case "UPDATE":
+        doTransactionUpdate(db);
+        break;
+      case "INSERT":
+        doTransactionInsert(db);
+        break;
+      case "SCAN":
+        doTransactionScan(db);
+        break;
+      case "DELETEMETAPURPOSE":
+        doTransactionDeleteMeta(db, 0);
+        break;
+      case "DELETEMETAUSER":
+        doTransactionDeleteMeta(db, 2);
+        break;
+      case "DELETE":
+        doTransactionDelete(db);
+        break;
     /*case "CHECKCOMPLIANCE":
       doTransactionCheckCompliance(db);
       break;*/
-    default:
-      doTransactionReadModifyWrite(db);
+      default:
+        doTransactionReadModifyWrite(db);
     }
 
     return true;
@@ -1002,7 +1075,12 @@ public class GDPRWorkload extends Workload {
       fields = new HashSet<String>(fieldnames);
     }
 
-    HashMap<String, ByteIterator> cells = new HashMap<String, ByteIterator>();
+    HashMap<String, ByteIterator> cells = new HashMap<>();
+    final int usrFieldNum = 2;
+    String userValue = "user" + keynum % fieldvalues[usrFieldNum].size();
+
+    // add user session key to get metadata
+    cells.put("USR", new StringByteIterator(userValue));
     db.read(table, keyname, fields, cells);
 
     /*if (dataintegrity) {
@@ -1026,7 +1104,7 @@ public class GDPRWorkload extends Workload {
     // choose a random scan length
     int len = scanlength.nextValue().intValue();
 
-    System.err.println("Read log called with scan len: "+ len);
+    System.err.println("Read log called with scan len: " + len);
 
     db.readLog(table, len);
   }
@@ -1035,7 +1113,7 @@ public class GDPRWorkload extends Workload {
 
     long count = (long) (recordcount * 0.9);
 
-    System.err.println("Verify conformance called with recordcount "+ count);
+    System.err.println("Verify conformance called with recordcount " + count);
 
     db.verifyTTL(table, count);
   }
@@ -1133,7 +1211,7 @@ public class GDPRWorkload extends Workload {
 
     //System.err.println("Update metadata called with cond: "+ metadatacond +
     //                   " value: " + metadatavalue + " metadatanum " + metadatanum);
-    
+
     db.updateMeta(table, metadatanum, metadatacond, "key*", fieldkey, metadatavalue);
   }
 
@@ -1159,11 +1237,11 @@ public class GDPRWorkload extends Workload {
   public void doTransactionDelete(DB db) {
     // choose a random key
     long keynum = nextKeynum();
-    
+
     String keyname = buildKeyName(keynum);
-    
+
     //System.err.println("Transaction delete called for: "+ keyname);
-    
+
     db.delete(table, keyname);
   }
 
@@ -1173,9 +1251,9 @@ public class GDPRWorkload extends Workload {
 
     // match on metadata field
     String metadatacond = buildDeterministicValue(keynum, metadatanum, fieldnames.get(metadatanum));
-    
+
     //System.err.println("Transaction delete meta called for: "+ metadatacond + " metadatanum: " + metadatanum);
-    
+
     db.deleteMeta(table, metadatanum, metadatacond, "key*");
   }
 
@@ -1198,8 +1276,8 @@ public class GDPRWorkload extends Workload {
    * Creates a weighted discrete values with database operations for a workload to perform.
    * Weights/proportions are read from the properties list and defaults are used
    * when values are not configured.
-   * Current operations are "READ", "READMETA", "UPDATE", "UPDATEMETA", 
-   *  "INSERT", "SCAN" and "READMODIFYWRITE".
+   * Current operations are "READ", "READMETA", "UPDATE", "UPDATEMETA",
+   * "INSERT", "SCAN" and "READMODIFYWRITE".
    *
    * @param p The properties list to pull weights from.
    * @return A generator that can be used to determine the next operation to perform.

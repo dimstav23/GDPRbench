@@ -319,7 +319,7 @@ public class TracerClient extends DB {
   public Status read(String table, String key, Set<String> fields,
       Map<String, ByteIterator> result) {
     
-    String query = "query(GET(\"" + key + "\"))\n";
+    String query = "query(GET(\"" + key + "\"))&" + buildSetPredicates(result) + "\n";
 
     try {
       getFileWriter().write(query);
