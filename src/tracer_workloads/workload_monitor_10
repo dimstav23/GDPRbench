@@ -26,8 +26,8 @@ tracer.file=/home/eaypek/Desktop/repos/GDPRbench/workload_traces/workload_log10
 mockvalues=true
 writeallfields=true
 
-recordcount=1000
-operationcount=1000
+recordcount=1000000
+operationcount=1000000
 workload=com.yahoo.ycsb.workloads.GDPRWorkload
 
 readallfields=true
