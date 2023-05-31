@@ -22,16 +22,15 @@
 #   Default data size: 1 KB records (10 fields, 100 bytes each, plus key)
 #   Request distribution: zipfian
 
-tracer.file=/home/eaypek/Desktop/repos/GDPRbench/workload_traces/workload_monitor_10
+tracer.file=/home/eaypek/Desktop/repos/GDPRbench/workload_traces/workload_monitor_vanilla
 mockvalues=true
 writeallfields=true
 
 recordcount=1000000
 operationcount=1000000
-workload=com.yahoo.ycsb.workloads.GDPRWorkload
+workload=com.yahoo.ycsb.workloads.CoreWorkload
 
 readallfields=true
-dataintegrity=true
 
 readproportion=0.5
 updateproportion=0.5
@@ -42,7 +41,7 @@ insertproportion=0
 usrcount=5
 sharewithall=true
 
-monitorproportion=0.1
+monitorproportion=0.0
 nottl=true
 objcount=1
 objstart=5
