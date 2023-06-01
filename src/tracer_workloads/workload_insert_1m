@@ -38,7 +38,7 @@ readproportion=1.0
 usrcount=5
 sharewithall=true
 
-monitorproportion=0.0
+monitorproportion=1.0
 nottl=true
 objcount=1
 objstart=5
