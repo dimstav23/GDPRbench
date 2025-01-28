@@ -22,12 +22,12 @@
 #   Default data size: 1 KB records (10 fields, 100 bytes each, plus key)
 #   Request distribution: zipfian
 
-tracer.file=/home/eaypek/Desktop/repos/GDPRbench/workload_traces/workloada_test
+tracer.file=/scratch/dimitrios/GDPRuler/ycsb_trace_generator/../workload_traces/workloadf_medium
 mockvalues=true
 writeallfields=true
 
-recordcount=1000
-operationcount=1000
+recordcount=100000
+operationcount=1000000
 workload=com.yahoo.ycsb.workloads.CoreWorkload
 
 readallfields=true
