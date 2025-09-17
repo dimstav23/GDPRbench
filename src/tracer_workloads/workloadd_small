@@ -26,7 +26,7 @@
 # which orders items purely by time, and demands the latest, is very different than 
 # workload here (which we believe is more typical of how people build systems.)
 
-tracer.file=/scratch/dimitrios/GDPRuler/ycsb_trace_generator/../workload_traces/workloadd_small
+tracer.file=/scratch/dimitrios/GDPRuler/ycsb_trace_generator/../workload_traces/workloadd_small_run
 mockvalues=true
 writeallfields=true
 

@@ -15,39 +15,46 @@
 
 
 # Yahoo! Cloud System Benchmark
-# Workload A: Update heavy workload
-#   Application example: Session store recording recent actions
-#
-#   Read/update ratio: 50/50
+# Workload C: Read only
+#   Application example: user profile cache, where profiles are constructed elsewhere (e.g., Hadoop)
+#                        
+#   Read/update ratio: 100/0
 #   Default data size: 1 KB records (10 fields, 100 bytes each, plus key)
 #   Request distribution: zipfian
 
-tracer.file=/home/eaypek/Desktop/repos/GDPRbench/workload_traces/workload_shared_1
+tracer.file=/scratch/dimitrios/GDPRuler/ycsb_trace_generator/../workload_traces/workloadc_monitor_50_medium_run
 mockvalues=true
 writeallfields=true
 
-recordcount=1000000
+recordcount=100000
 operationcount=1000000
 workload=com.yahoo.ycsb.workloads.GDPRWorkload
 
 readallfields=true
 dataintegrity=true
 
-readproportion=0.5
-updateproportion=0.5
+readproportion=1
+updateproportion=0
 scanproportion=0
 insertproportion=0
 
-# share each object with all the users
-usrcount=1
-sharewithall=true
-
-monitorproportion=0.0
-nottl=true
-objcount=1
-objstart=5
-purcount=1
-readlog=false
-srccount=1
-
 requestdistribution=zipfian
+
+## GDPR metadata properties
+# share each object with all the users
+usrcount=64
+sharewithall=true
+# set monitor proportion
+monitorproportion=1.0
+# do not expire the values
+nottl=true
+# number of objections
+objcount=32
+# ID of purpose for the first defined objection
+objstart=32
+# number of purposes
+purcount=32
+# do not scan the logs
+readlog=false
+# number of sources
+srccount=64
