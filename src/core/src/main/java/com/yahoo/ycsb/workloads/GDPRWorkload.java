@@ -1096,8 +1096,9 @@ public class GDPRWorkload extends Workload {
     String metadatacond = buildDeterministicValue(keynum, metadatanum, fieldnames.get(metadatanum));
 
     //System.err.println("Read metadata called with cond: "+ metadatacond + " Field num: " + metadatanum);
-
-    db.readMeta(table, metadatanum, metadatacond, "key*", new Vector<HashMap<String, ByteIterator>>());
+    
+    // INFO: converted to key prefix without the "*" for GDPRuler automation
+    db.readMeta(table, metadatanum, metadatacond, "key", new Vector<HashMap<String, ByteIterator>>());
   }
 
   public void doTransactionReadLog(DB db) {
@@ -1212,7 +1213,8 @@ public class GDPRWorkload extends Workload {
     //System.err.println("Update metadata called with cond: "+ metadatacond +
     //                   " value: " + metadatavalue + " metadatanum " + metadatanum);
 
-    db.updateMeta(table, metadatanum, metadatacond, "key*", fieldkey, metadatavalue);
+    // INFO: converted to key prefix without the "*" for GDPRuler automation
+    db.updateMeta(table, metadatanum, metadatacond, "key", fieldkey, metadatavalue);
   }
 
   public void doTransactionUpdate(DB db) {
@@ -1254,7 +1256,8 @@ public class GDPRWorkload extends Workload {
 
     //System.err.println("Transaction delete meta called for: "+ metadatacond + " metadatanum: " + metadatanum);
 
-    db.deleteMeta(table, metadatanum, metadatacond, "key*");
+    // INFO: converted to key prefix without the "*" for GDPRuler automation
+    db.deleteMeta(table, metadatanum, metadatacond, "key");
   }
 
   public void doTransactionInsert(DB db) {
