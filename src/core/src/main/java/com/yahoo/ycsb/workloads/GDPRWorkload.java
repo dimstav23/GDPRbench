@@ -175,7 +175,7 @@ public class GDPRWorkload extends Workload {
 
   public static final String READ_LOG_PROPERTY = "readlog";
 
-  public static final String READ_LOG_PROPERTY_DEFAULT = "true";
+  public static final String READ_LOG_PROPERTY_DEFAULT = "false";
 
   protected boolean readlog;
 
@@ -260,6 +260,46 @@ public class GDPRWorkload extends Workload {
    */
   public static final String READMETA_PURPOSE_PROPORTION_PROPERTY_DEFAULT = "0.0";
 
+    /**
+   * The name of the property for the proportion of transactions that are reads.
+   */
+  public static final String READONLYMETA_PURPOSE_PROPORTION_PROPERTY = "readonlymetapurposeproportion";
+
+  /**
+   * The default proportion of transactions that are reads.
+   */
+  public static final String READONLYMETA_PURPOSE_PROPORTION_PROPERTY_DEFAULT = "0.0";
+  
+  /**
+   * The name of the property for the proportion of transactions that are reads.
+   */
+  public static final String READMETA_OBJECTION_PROPORTION_PROPERTY = "readmetaobjectionproportion";
+
+  /**
+   * The default proportion of transactions that are reads.
+   */
+  public static final String READMETA_OBJECTION_PROPORTION_PROPERTY_DEFAULT = "0.0";
+
+    /**
+   * The name of the property for the proportion of transactions that are reads.
+   */
+  public static final String READONLYMETA_OBJECTION_PROPORTION_PROPERTY = "readonlymetaobjectionproportion";
+
+  /**
+   * The default proportion of transactions that are reads.
+   */
+  public static final String READONLYMETA_OBJECTION_PROPORTION_PROPERTY_DEFAULT = "0.0";
+
+  /**
+   * The name of the property for the proportion of transactions that are reads.
+   */
+  public static final String READONLYMETA_KEY_PROPORTION_PROPERTY = "readonlymetakeyproportion";
+
+  /**
+   * The default proportion of transactions that are reads.
+   */
+  public static final String READONLYMETA_KEY_PROPORTION_PROPERTY_DEFAULT = "0.0";
+
   /**
    * The name of the property for the proportion of transactions that are reads.
    */
@@ -269,6 +309,16 @@ public class GDPRWorkload extends Workload {
    * The default proportion of transactions that are reads.
    */
   public static final String READMETA_USER_PROPORTION_PROPERTY_DEFAULT = "0.0";
+
+  /**
+   * The name of the property for the proportion of transactions that are reads.
+   */
+  public static final String READONLYMETA_USER_PROPORTION_PROPERTY = "readonlymetauserproportion";
+
+  /**
+   * The default proportion of transactions that are reads.
+   */
+  public static final String READONLYMETA_USER_PROPORTION_PROPERTY_DEFAULT = "0.0";
 
   /**
    * The name of the property for the proportion of transactions that are updates.
@@ -299,6 +349,16 @@ public class GDPRWorkload extends Workload {
    * The default proportion of transactions that are updates.
    */
   public static final String UPDATEMETA_USER_PROPORTION_PROPERTY_DEFAULT = "0.0";
+
+  /**
+   * The name of the property for the proportion of transactions that are updates.
+   */
+  public static final String UPDATEMETA_KEY_PROPORTION_PROPERTY = "updatemetakeyproportion";
+
+  /**
+   * The default proportion of transactions that are updates.
+   */
+  public static final String UPDATEMETA_KEY_PROPORTION_PROPERTY_DEFAULT = "0.0";
 
   /**
    * The name of the property for the proportion of transactions that are inserts.
@@ -974,8 +1034,23 @@ public class GDPRWorkload extends Workload {
       case "READMETAPURPOSE":
         doTransactionReadMeta(db, 0);
         break;
+      case "READONLYMETAPURPOSE":
+        doTransactionReadOnlyMeta(db, 0);
+        break;
+      case "READMETAOBJECTION":
+        doTransactionReadMeta(db, 3);
+        break;
+      case "READONLYMETAOBJECTION":
+        doTransactionReadOnlyMeta(db, 3);
+        break;
       case "READMETAUSER":
         doTransactionReadMeta(db, 2);
+        break;
+      case "READONLYMETAUSER":
+        doTransactionReadOnlyMeta(db, 2);
+        break;
+      case "READONLYMETAKEY":
+        doTransactionReadOnlyMetaByKey(db);
         break;
       case "READ":
         doTransactionRead(db);
@@ -985,6 +1060,9 @@ public class GDPRWorkload extends Workload {
         break;
       case "UPDATEMETAUSER":
         doTransactionUpdateMeta(db, 2);
+        break;
+      case "UPDATEMETAKEY":
+        doTransactionUpdateOnlyMeta(db);
         break;
       case "UPDATE":
         doTransactionUpdate(db);
@@ -1099,6 +1177,57 @@ public class GDPRWorkload extends Workload {
     
     // INFO: converted to key prefix without the "*" for GDPRuler automation
     db.readMeta(table, metadatanum, metadatacond, "key", new Vector<HashMap<String, ByteIterator>>());
+  }
+
+  public void doTransactionReadOnlyMeta(DB db, int metadatanum) {
+
+    long keynum = nextKeynum();
+
+    // match on meta data field passed
+    String metadatacond = buildDeterministicValue(keynum, metadatanum, fieldnames.get(metadatanum));
+
+    //System.err.println("Read metadata called with cond: "+ metadatacond + " Field num: " + metadatanum);
+    
+    // INFO: converted to key prefix without the "*" for GDPRuler automation
+    db.readMeta(table, metadatanum, metadatacond, "key_only_meta", new Vector<HashMap<String, ByteIterator>>());
+  }
+
+  public void doTransactionReadOnlyMetaByKey(DB db) {
+    // Read metadata for a specific key
+    long keynum = nextKeynum();
+    String keyname = buildKeyName(keynum) + "_meta_only";  // Add suffix
+    
+    HashMap<String, ByteIterator> cells = new HashMap<>();
+    final int usrFieldNum = 2;
+    String userValue = "user" + keynum % fieldvalues[usrFieldNum].size();
+
+    // Add user session key as metadata filter
+    cells.put("USR", new StringByteIterator(userValue));
+    
+    // Call the new readOnlyMeta method
+    db.read(table, keyname, null, cells);
+  }
+
+  public void doTransactionUpdateOnlyMeta(DB db) {
+    long keynum = nextKeynum();
+    String keyname = buildKeyName(keynum) + "_meta_only";  // Add suffix
+
+    int fieldnum = metadatachooser.nextValue().intValue();
+    String fieldkey = fieldnames.get(fieldnum);
+
+    // Skip non-updatable fields
+    while (fieldkey.equals("USR") || fieldkey.equals("SRC") || fieldkey.equals("Data")) {
+      fieldnum = metadatachooser.nextValue().intValue();
+      fieldkey = fieldnames.get(fieldnum);
+    }
+
+    String metadatavalue = buildDeterministicValue(keynum, fieldnum, fieldkey);
+    
+    HashMap<String, ByteIterator> values = new HashMap<>();
+    values.put(fieldkey, new StringByteIterator(metadatavalue));
+
+    // Reuse existing update method
+    db.update(table, keyname, values);
   }
 
   public void doTransactionReadLog(DB db) {
@@ -1294,14 +1423,26 @@ public class GDPRWorkload extends Workload {
         p.getProperty(READ_PROPORTION_PROPERTY, READ_PROPORTION_PROPERTY_DEFAULT));
     final double readmetapurproportion = Double.parseDouble(
         p.getProperty(READMETA_PURPOSE_PROPORTION_PROPERTY, READMETA_PURPOSE_PROPORTION_PROPERTY_DEFAULT));
+    final double readonlymetapurproportion = Double.parseDouble(
+        p.getProperty(READONLYMETA_PURPOSE_PROPORTION_PROPERTY, READONLYMETA_PURPOSE_PROPORTION_PROPERTY_DEFAULT));
+    final double readmetaobjproportion = Double.parseDouble(
+        p.getProperty(READMETA_OBJECTION_PROPORTION_PROPERTY, READMETA_OBJECTION_PROPORTION_PROPERTY_DEFAULT));
+    final double readonlymetaobjproportion = Double.parseDouble(
+        p.getProperty(READONLYMETA_OBJECTION_PROPORTION_PROPERTY, READONLYMETA_OBJECTION_PROPORTION_PROPERTY_DEFAULT));
     final double readmetauserproportion = Double.parseDouble(
         p.getProperty(READMETA_USER_PROPORTION_PROPERTY, READMETA_USER_PROPORTION_PROPERTY_DEFAULT));
+    final double readonlymetauserproportion = Double.parseDouble(
+        p.getProperty(READONLYMETA_USER_PROPORTION_PROPERTY, READONLYMETA_USER_PROPORTION_PROPERTY_DEFAULT));
+    final double readonlymetakeyproportion = Double.parseDouble(
+        p.getProperty(READONLYMETA_KEY_PROPORTION_PROPERTY, READONLYMETA_KEY_PROPORTION_PROPERTY_DEFAULT));
     final double updateproportion = Double.parseDouble(
         p.getProperty(UPDATE_PROPORTION_PROPERTY, UPDATE_PROPORTION_PROPERTY_DEFAULT));
     final double updatemetapurproportion = Double.parseDouble(
         p.getProperty(UPDATEMETA_PURPOSE_PROPORTION_PROPERTY, UPDATEMETA_PURPOSE_PROPORTION_PROPERTY_DEFAULT));
     final double updatemetauserproportion = Double.parseDouble(
         p.getProperty(UPDATEMETA_USER_PROPORTION_PROPERTY, UPDATEMETA_USER_PROPORTION_PROPERTY_DEFAULT));
+    final double updatemetakeyproportion = Double.parseDouble(
+        p.getProperty(UPDATEMETA_KEY_PROPORTION_PROPERTY, UPDATEMETA_KEY_PROPORTION_PROPERTY_DEFAULT));
     final double insertproportion = Double.parseDouble(
         p.getProperty(INSERT_PROPORTION_PROPERTY, INSERT_PROPORTION_PROPERTY_DEFAULT));
     final double deleteproportion = Double.parseDouble(
@@ -1324,8 +1465,28 @@ public class GDPRWorkload extends Workload {
       operationchooser.addValue(readmetapurproportion, "READMETAPURPOSE");
     }
 
+    if (readonlymetapurproportion > 0) {
+      operationchooser.addValue(readonlymetapurproportion, "READONLYMETAPURPOSE");
+    }
+
+    if (readmetaobjproportion > 0) {
+      operationchooser.addValue(readmetaobjproportion, "READMETAOBJECTION");
+    }
+
+    if (readonlymetaobjproportion > 0) {
+      operationchooser.addValue(readonlymetaobjproportion, "READONLYMETAOBJECTION");
+    }
+
     if (readmetauserproportion > 0) {
       operationchooser.addValue(readmetauserproportion, "READMETAUSER");
+    }
+
+    if (readonlymetauserproportion > 0) {
+      operationchooser.addValue(readonlymetauserproportion, "READONLYMETAUSER");
+    }
+
+    if (readonlymetakeyproportion > 0) {
+      operationchooser.addValue(readonlymetakeyproportion, "READONLYMETAKEY");
     }
 
     if (updateproportion > 0) {
@@ -1338,6 +1499,10 @@ public class GDPRWorkload extends Workload {
 
     if (updatemetauserproportion > 0) {
       operationchooser.addValue(updatemetauserproportion, "UPDATEMETAUSER");
+    }
+
+    if (updatemetakeyproportion > 0) {
+      operationchooser.addValue(updatemetakeyproportion, "UPDATEMETAKEY");
     }
 
     if (insertproportion > 0) {

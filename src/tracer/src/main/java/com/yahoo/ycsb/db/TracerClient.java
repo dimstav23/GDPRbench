@@ -320,10 +320,25 @@ public class TracerClient extends DB {
       Map<String, ByteIterator> result) {
 
     String query;
-    if (result.isEmpty()) {
-      query = "query(GET(\"" + key + "\"))\n";
-    } else {
-      query = "query(GET(\"" + key + "\"))&" + buildSetPredicates(result) + "\n";
+    // Check if key ends with "_meta_only" suffix
+    String suffix = "_meta_only";
+
+    if (key.endsWith(suffix)) {
+      // Extract base key and generate get_meta query
+      String baseKey = key.substring(0, key.length() - suffix.length());
+      if (result.isEmpty()) {
+        query = "query(GET(\"" + baseKey + "\",\"meta_only\"))\n";
+      } else {
+        query = "query(GET(\"" + baseKey + "\",\"meta_only\"))&" + buildCondPredicates(result) + "\n";
+      }
+    }
+    else {
+      // Regular get query
+      if (result.isEmpty()) {
+        query = "query(GET(\"" + key + "\"))\n";
+      } else {
+        query = "query(GET(\"" + key + "\"))&" + buildSetPredicates(result) + "\n";
+      }
     }
 
     try {
@@ -338,8 +353,18 @@ public class TracerClient extends DB {
   @Override
   public Status readMeta(String table, int fieldnum, String cond, String keymatch,
       Vector<HashMap<String, ByteIterator>> result) {
-    String query = "query(GETM(\"" + keymatch + "\"))&" + fieldToCondPred(fieldnames[fieldnum], cond) + "\n";
-    
+    String query;
+    String suffix = "_only_meta";
+  
+    if (keymatch.endsWith(suffix)) {
+      // keymatch ends with "_only_meta"
+      String baseKey = keymatch.substring(0, keymatch.length() - suffix.length());
+      query = "query(GETM(\"" + baseKey + "\",\"metadata\"))&" + fieldToCondPred(fieldnames[fieldnum], cond) + "\n";
+      // Add any additional logic for the "_only_meta" case
+    } else {
+      // keymatch does not end with "_only_meta" 
+      query = "query(GETM(\"" + keymatch + "\",\"data\"))&" + fieldToCondPred(fieldnames[fieldnum], cond) + "\n";
+    }
     try {
       getFileWriter().write(query);
     } catch (IOException e) {
@@ -419,7 +444,12 @@ public class TracerClient extends DB {
       Map<String, ByteIterator> values) {
     
     String query = "";
-    if (key.startsWith("user")) {
+    String suffix = "_meta_only";
+    if (key.endsWith(suffix)) {
+      // Metadata-only update
+      String baseKey = key.substring(0, key.length() - suffix.length());
+      query = "query(PUT(\"" + baseKey + "\",\"meta_only\"))&" + buildSetPredicates(values) + "\n";
+    } else if (key.startsWith("user")) {
       query = "query(PUT(\"" + key + "\",\"" + mergeValues(values) + "\"))\n";
     } else if (key.startsWith("key")) {
       query = "query(PUT(\"" + key + "\",\"" + getValData(values) + "\"))&" + buildSetPredicates(values) + "\n";
