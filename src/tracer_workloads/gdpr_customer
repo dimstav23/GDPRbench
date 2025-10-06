@@ -27,8 +27,7 @@ mockvalues=true
 fieldlength=1000
 fieldcount=8
 
-
-recordcount=10000
+recordcount=100000
 operationcount=1000
 workload=com.yahoo.ycsb.workloads.GDPRWorkload
 
@@ -36,18 +35,23 @@ readallfields=true
 writeallfields=true
 dataintegrity=true
 
-purcount=25
-usrcount=10000
-objcount=100
-shrcount=10
-srccount=10
+purcount=128
+usrcount=128
+objcount=128
+shrcount=128
+srccount=128
 
-readproportion=0.2
-readmetapurposeproportion=0.1
-readmetauserproportion=0.1
+readproportion=0
+readonlymetapurposeproportion=0
+readonlymetauserproportion=0
+readonlymetakeyproportion=0
+readmetapurposeproportion=0
+readmetauserproportion=0.2
+readonlymetakeyproportion=0.2
 updateproportion=0.2
-updatemetapurposeproportion=0.1
-updatemetauserproportion=0.1
+updatemetapurposeproportion=0
+updatemetauserproportion=0
+updatemetakeyproportion=0.2
 deleteproportion=0.2
 deletemetapurposeproportion=0
 deletemetauserproportion=0
