@@ -27,6 +27,7 @@ package com.yahoo.ycsb.db;
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.Status;
+import com.yahoo.ycsb.workloads.GDPRWorkload;
 
 import java.io.IOException;
 import java.io.File;
@@ -52,6 +53,10 @@ public class TracerClient extends DB {
 
   private static FileWriter fileWriter;
 
+  // Store the counts as instance variables
+  private static int userCount = 128;
+  private static int purposeCount = 64;
+
   private static String[] fieldnames = {
       "PUR", "TTL", "USR", "OBJ", "DEC", "ACL", "SHR", "SRC", "LOG", "Data"
   };
@@ -60,6 +65,18 @@ public class TracerClient extends DB {
     Properties props = getProperties();
     String tracerFilePath = props.getProperty(TRACER_FILE_PROPERTY);
     System.out.println(tracerFilePath);
+
+    // Read user and purpose counts using GDPRWorkload constants
+    userCount = Integer.parseInt(props.getProperty(
+        GDPRWorkload.USER_COUNT_PROPERTY, 
+        GDPRWorkload.USER_COUNT_PROPERTY_DEFAULT));
+    purposeCount = Integer.parseInt(props.getProperty(
+        GDPRWorkload.PURPOSE_COUNT_PROPERTY, 
+        GDPRWorkload.PURPOSE_COUNT_PROPERTY_DEFAULT));
+    
+    System.out.println("TracerClient initialized with userCount=" + userCount + 
+                       ", purposeCount=" + purposeCount);
+
     // Init the trace file
     File traceFile = new File(tracerFilePath);
     try {
@@ -235,6 +252,7 @@ public class TracerClient extends DB {
 
   public String sessPred(String cond) {  
     String pred = "sessionKeyIs(\"" + cond + "\")";
+    // String pred = "sessionKey(\"" + cond + "\")&" + "sessionKeyIs(\"" + cond + "\")";
     return pred;
   }
 
@@ -244,6 +262,10 @@ public class TracerClient extends DB {
   }
 
   public String purPred(String cond) {
+    /* 
+      GDPRuler addition so that the user requests in the getm queries 
+      are made based on a random user
+    */
     String pred = "objPurIs(\"" + cond + "\")";
     return pred;
   }
@@ -303,6 +325,50 @@ public class TracerClient extends DB {
     return pred;
   }
 
+  // Helper method to extract user from key
+  private String extractUserFromKey(String key) {
+    // Keys belong to users in round-robin fashion
+    try {
+      int keyNum = Integer.parseInt(key.replaceAll("[^0-9]", ""));
+      return "user" + (keyNum % userCount);
+    } catch (Exception e) {
+      return "user0"; // default fallback
+    }
+  }
+
+  // Helper method to extract purpose from key
+  private String extractPurposeFromKey(String key) {
+    // Keys are assigned purposes in round-robin fashion
+    try {
+      int keyNum = Integer.parseInt(key.replaceAll("[^0-9]", ""));
+      return "purpose" + (keyNum % purposeCount);
+    } catch (Exception e) {
+      return "purpose0"; // default fallback
+    }
+  }
+
+  // Helper method to extract user from a condition (simply take the suffix)
+  private String extractUserFromCond(String cond) {
+    // Keys belong to users in round-robin fashion
+    try {
+      int condNum = Integer.parseInt(cond.replaceAll("[^0-9]", ""));
+      return "user" + (condNum % 128);
+    } catch (Exception e) {
+      return "user0"; // default fallback
+    }
+  }
+
+  // Helper method to extract purpose from key
+  private String extractPurposeFromCond(String cond) {
+    // Keys are assigned purposes in round-robin fashion
+    try {
+      int condNum = Integer.parseInt(cond.replaceAll("[^0-9]", ""));
+      return "purpose" + (condNum % 64);
+    } catch (Exception e) {
+      return "purpose0"; // default fallback
+    }
+  }
+
   /*
    * Calculate a hash for a key to store it in an index. The actual return value
    * of this function is not interesting -- it primarily needs to be fast and
@@ -318,26 +384,30 @@ public class TracerClient extends DB {
   @Override
   public Status read(String table, String key, Set<String> fields,
       Map<String, ByteIterator> result) {
-
+    
+    // result holds conditions for the "get" operation
     String query;
     // Check if key ends with "_meta_only" suffix
     String suffix = "_meta_only";
-
+    
     if (key.endsWith(suffix)) {
       // Extract base key and generate get_meta query
       String baseKey = key.substring(0, key.length() - suffix.length());
+      String sessionPred = "sessionKey(\"" + extractUserFromKey(baseKey) + "\")";
+      String purposePred = "objPurIs(\"" + extractPurposeFromKey(baseKey) + "\")";
       if (result.isEmpty()) {
-        query = "query(GET(\"" + baseKey + "\",\"meta_only\"))\n";
+        query = "query(GET(\"" + baseKey + "\",\"meta_only\"))&" + sessionPred + "&" + purposePred + "\n";
       } else {
-        query = "query(GET(\"" + baseKey + "\",\"meta_only\"))&" + buildCondPredicates(result) + "\n";
+        query = "query(GET(\"" + baseKey + "\",\"meta_only\"))&" + sessionPred + "&" + purposePred + "&" + buildCondPredicates(result) + "\n";
       }
     }
     else {
       // Regular get query
+      String sessionPred = "sessionKey(\"" + extractUserFromKey(key) + "\")";
       if (result.isEmpty()) {
-        query = "query(GET(\"" + key + "\"))\n";
+        query = "query(GET(\"" + key + "\"))&" + sessionPred + "\n";
       } else {
-        query = "query(GET(\"" + key + "\"))&" + buildSetPredicates(result) + "\n";
+        query = "query(GET(\"" + key + "\"))&" + sessionPred + "&" + buildCondPredicates(result) + "\n";
       }
     }
 
@@ -355,15 +425,22 @@ public class TracerClient extends DB {
       Vector<HashMap<String, ByteIterator>> result) {
     String query;
     String suffix = "_only_meta";
-  
+
+    String sessionPred = "sessionKey(\"" + extractUserFromCond(cond) + "\")";
+    String purposePred = "";
+    if (fieldnum != 0) {
+      // if we do not have a purpose condition, add the specified purpose so that the query succeeds
+      purposePred = "objPurIs(\"" + extractPurposeFromCond(cond) + "\")&";
+    }
+
     if (keymatch.endsWith(suffix)) {
       // keymatch ends with "_only_meta"
       String baseKey = keymatch.substring(0, keymatch.length() - suffix.length());
-      query = "query(GETM(\"" + baseKey + "\",\"metadata\"))&" + fieldToCondPred(fieldnames[fieldnum], cond) + "\n";
+      query = "query(GETM(\"" + baseKey + "\",\"metadata\"))&" + sessionPred + "&" + purposePred + fieldToCondPred(fieldnames[fieldnum], cond) + "\n";
       // Add any additional logic for the "_only_meta" case
     } else {
-      // keymatch does not end with "_only_meta" 
-      query = "query(GETM(\"" + keymatch + "\",\"data\"))&" + fieldToCondPred(fieldnames[fieldnum], cond) + "\n";
+      // keymatch does not end with "_only_meta"
+      query = "query(GETM(\"" + keymatch + "\",\"data\"))&" + sessionPred + "&" + purposePred + fieldToCondPred(fieldnames[fieldnum], cond) + "\n";
     }
     try {
       getFileWriter().write(query);
@@ -416,8 +493,10 @@ public class TracerClient extends DB {
 
   @Override
   public Status delete(String table, String key) {
-
-    String query = "query(DELETE(\"" + key + "\"))\n";
+    String sessionPred = "sessionKey(\"" + extractUserFromKey(key) + "\")";
+    String purposePred = "objPurIs(\"" + extractPurposeFromKey(key) + "\")";
+    // String query = "query(DELETE(\"" + key + "\"))\n";
+    String query = "query(DELETE(\"" + key + "\"))&" + sessionPred + "&" + purposePred + "\n";
     try {
       getFileWriter().write(query);
     } catch (IOException e) {
@@ -429,7 +508,13 @@ public class TracerClient extends DB {
 
   @Override
   public Status deleteMeta(String table, int fieldnum, String condition, String keymatch) {
-    String query = "query(DELETEM(\"" + keymatch + "\"))&" + fieldToCondPred(fieldnames[fieldnum], condition) + "\n";
+    String sessionPred = "sessionKey(\"" + extractUserFromCond(condition) + "\")";
+    String purposePred = "";
+    if (fieldnum != 0) {
+      // if we do not have a purpose condition, add the specified purpose so that the query succeeds
+      purposePred = "objPurIs(\"" + extractPurposeFromCond(condition) + "\")&";
+    }
+    String query = "query(DELETEM(\"" + keymatch + "\"))&" + sessionPred + "&" + purposePred + fieldToCondPred(fieldnames[fieldnum], condition) + "\n";
     try {
       getFileWriter().write(query);
     } catch (IOException e) {
@@ -448,7 +533,9 @@ public class TracerClient extends DB {
     if (key.endsWith(suffix)) {
       // Metadata-only update
       String baseKey = key.substring(0, key.length() - suffix.length());
-      query = "query(PUT(\"" + baseKey + "\",\"meta_only\"))&" + buildSetPredicates(values) + "\n";
+      String sessionPred = "sessionKey(\"" + extractUserFromKey(baseKey) + "\")";
+      String purposePred = "objPurIs(\"" + extractPurposeFromKey(baseKey) + "\")";
+      query = "query(PUT(\"" + baseKey + "\",\"meta_only\"))&" + sessionPred + "&" + purposePred + "&" + buildSetPredicates(values) + "\n";
     } else if (key.startsWith("user")) {
       query = "query(PUT(\"" + key + "\",\"" + mergeValues(values) + "\"))\n";
     } else if (key.startsWith("key")) {
@@ -467,7 +554,13 @@ public class TracerClient extends DB {
   public Status updateMeta(String table, int fieldnum, String condition, 
       String keymatch, String newfieldname, String newmetadatavalue) {
     
-    String query = "query(PUTM(\"" + keymatch + "\"))&" + fieldToCondPred(fieldnames[fieldnum], condition) +
+    String sessionPred = "sessionKey(\"" + extractUserFromCond(condition) + "\")";
+    String purposePred = "";
+    if (fieldnum != 0) {
+      // if we do not have a purpose condition, add the specified purpose so that the query succeeds
+      purposePred = "objPurIs(\"" + extractPurposeFromCond(condition) + "\")&";
+    }
+    String query = "query(PUTM(\"" + keymatch + "\"))&" + sessionPred + "&" + purposePred + fieldToCondPred(fieldnames[fieldnum], condition) +
                     "&" + fieldToSetPred(newfieldname, newmetadatavalue) + "\n";
     try {
       getFileWriter().write(query);

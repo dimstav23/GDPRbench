@@ -829,6 +829,9 @@ public class GDPRWorkload extends Workload {
           fieldnames.add("SHR");
           fieldvalues[i] = new ArrayList<String>();
           StringBuilder sb = new StringBuilder();
+          if (usrlength <= 0) {
+            usrlength = Integer.parseInt(USER_COUNT_PROPERTY_DEFAULT);
+          }
           if (sharewithall) {
             for (x = 0; x < usrlength; x++) {
               sb.append("user").append(x).append(",");
@@ -841,8 +844,13 @@ public class GDPRWorkload extends Workload {
             if (shrlength <= 0) {
               shrlength = Integer.parseInt(SHARED_COUNT_PROPERTY_DEFAULT);
             }
-            for (x = 0; x < shrlength; x++) {
-              fieldvalues[i].add("user" + Integer.toString(x)); // to associating sharing w/ users
+            for (x = 0; x < usrlength; x++) {
+              StringBuilder sb_shr = new StringBuilder();
+              for (int j = 0; j < shrlength; j++) {
+                sb_shr.append("user").append(x+j+1).append(",");
+              }
+              sb_shr.deleteCharAt(sb_shr.length() - 1); // delete the last comma
+              fieldvalues[i].add(sb_shr.toString());
             }
           }
           break;
@@ -1156,9 +1164,12 @@ public class GDPRWorkload extends Workload {
     HashMap<String, ByteIterator> cells = new HashMap<>();
     final int usrFieldNum = 2;
     String userValue = "user" + keynum % fieldvalues[usrFieldNum].size();
+    final int purFieldNum = 0;
+    String purValue = "purpose" + keynum % fieldvalues[purFieldNum].size();
 
     // add user session key to get metadata
     cells.put("USR", new StringByteIterator(userValue));
+    cells.put("PUR", new StringByteIterator(purValue));
     db.read(table, keyname, fields, cells);
 
     /*if (dataintegrity) {

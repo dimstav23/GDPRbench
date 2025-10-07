@@ -35,10 +35,16 @@ readallfields=true
 writeallfields=true
 dataintegrity=true
 
-purcount=128
+# number of purposes allowed per KV pair
+purcount=64
+# number of users
 usrcount=128
-objcount=128
-shrcount=128
+# number of objections (ids start after purposes ids)
+objstart=64
+objcount=64
+# users to share each KV pair with
+shrcount=10
+# number of sources
 srccount=128
 
 readproportion=0
