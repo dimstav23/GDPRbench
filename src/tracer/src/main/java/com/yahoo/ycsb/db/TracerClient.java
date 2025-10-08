@@ -57,7 +57,7 @@ public class TracerClient extends DB {
 
   // Store the counts as instance variables
   private static int recordCount = 100000;      // Number of KV pairs
-  private static int userCount = 128;
+  private static int userCount = 16;
   private static int purposeCount = 64;
   private static int objStart = 25;      // Starting objection number
   private static int objCount = 64;      // Number of objections
@@ -352,7 +352,7 @@ public class TracerClient extends DB {
   // Helper method to extract user from key (deterministic)
   private String extractUserFromKey(String key) {
     try {
-      int keyNum = Integer.parseInt(key.replaceAll("[^0-9]", ""));
+      long keyNum = Long.parseLong(key.replaceAll("[^0-9]", ""));
       // Direct mapping from load phase: keyN -> userN
       return "user" + (keyNum % userCount);
     } catch (Exception e) {
@@ -363,7 +363,7 @@ public class TracerClient extends DB {
   // Helper method to extract purpose from key (deterministic)
   private String extractPurposeFromKey(String key) {
     try {
-      int keyNum = Integer.parseInt(key.replaceAll("[^0-9]", ""));
+      long keyNum = Long.parseLong(key.replaceAll("[^0-9]", ""));
       // Direct mapping from load phase: keyN -> purposeN
       return "purpose" + (keyNum % purposeCount);
     } catch (Exception e) {
@@ -373,14 +373,14 @@ public class TracerClient extends DB {
 
   // Helper to find a user based on condition and field type
   private String extractUserFromCond(String cond, int fieldnum, int selector) {
-    int seqNum = Integer.parseInt(cond.replaceAll("[^0-9]", ""));
+    long seqNum = Long.parseLong(cond.replaceAll("[^0-9]", ""));
     if (fieldnum == FIELD_PUR) {
-      int userId = (((purposeCount * selector) + seqNum) % recordCount) % userCount;
+      long userId = ((((long)purposeCount * selector) + seqNum) % recordCount) % userCount;
       return "user" + userId;
     }
     else if (fieldnum == FIELD_OBJ) {
       seqNum -= objStart; // remove the offset from the objections
-      int userId = (((objCount * selector) + seqNum) % recordCount) % userCount;
+      long userId = ((((long)objCount * selector) + seqNum) % recordCount) % userCount;
       return "user" + userId;
     }
     else if (fieldnum == FIELD_USR) {
@@ -392,17 +392,17 @@ public class TracerClient extends DB {
 
   // Helper to find a purpose based on condition and field type
   private String extractPurposeFromCond(String cond, int fieldnum, int selector) {
-    int seqNum = Integer.parseInt(cond.replaceAll("[^0-9]", ""));
+    long seqNum = Long.parseLong(cond.replaceAll("[^0-9]", ""));
     if (fieldnum == FIELD_PUR) {
       return cond;
     }
     else if (fieldnum == FIELD_OBJ) {
       seqNum -= objStart; // remove the offset from the objections
-      int purposeId = (((objCount * selector) + seqNum) % recordCount) % purposeCount;
+      long purposeId = ((((long)objCount * selector) + seqNum) % recordCount) % purposeCount;
       return "purpose" + purposeId;
     }
     else if (fieldnum == FIELD_USR) {
-      int purposeId = (((userCount * selector) + seqNum) % recordCount) % purposeCount;
+      long purposeId = ((((long)userCount * selector) + seqNum) % recordCount) % purposeCount;
       return "purpose" + purposeId;
     }
     return "purpose0";
@@ -446,7 +446,8 @@ public class TracerClient extends DB {
     else {
       // Regular get query
       if (result.isEmpty()) {
-        query = "query(GET(\"" + key + "\"))\n";
+        String sessionPred = "sessionKey(\"" + extractUserFromKey(key) + "\")";
+        query = "query(GET(\"" + key + "\"))" + "&" + sessionPred + "\n";
       } else {
         /* GDPR workload GET */
         /* always specify session key based on the key - purpose is provided by the db.read of the GDPRWorkload.java */
@@ -504,7 +505,8 @@ public class TracerClient extends DB {
 
     String query = "";
     if (key.startsWith("user")) {
-      query = "query(PUT(\"" + key + "\",\"" + mergeValues(values) + "\"))\n";
+      String sessionPred = "sessionKey(\"" + extractUserFromKey(key) + "\")";
+      query = "query(PUT(\"" + key + "\",\"" + mergeValues(values) + "\"))" + "&" + sessionPred + "\n";
     } else if (key.startsWith("key")) {
       query = "query(PUT(\"" + key + "\",\"" + getValData(values) + "\"))&" + buildSetPredicates(values) + "\n";
     }
@@ -524,7 +526,8 @@ public class TracerClient extends DB {
 
     String query = "";
     if (key.startsWith("user")) {
-      query = "query(PUT(\"" + key + "\",\"" + mergeValues(values) + "\"))\n";
+      String sessionPred = "sessionKey(\"" + extractUserFromKey(key) + "\")";
+      query = "query(PUT(\"" + key + "\",\"" + mergeValues(values) + "\"))" + "&" + sessionPred + "\n";
     } else if (key.startsWith("key")) {
       query = "query(PUT(\"" + key + "\",\"" + getValData(values) + "\"))&" + buildSetPredicates(values) + "\n";
     }
@@ -592,7 +595,8 @@ public class TracerClient extends DB {
       query = "query(PUT(\"" + baseKey + "\",\"meta_only\"))&" + sessionPred + "&" + purposePred + "&" + buildSetPredicates(values) + "\n";
     } else if (key.startsWith("user")) {
       // Regular put query for GDPR workloads
-      query = "query(PUT(\"" + key + "\",\"" + mergeValues(values) + "\"))\n";
+      /* always specify session key based on the condition */
+      String sessionPred = "sessionKey(\"" + extractUserFromKey(key) + "\")";
     } else if (key.startsWith("key")) {
       // Regular put query
       query = "query(PUT(\"" + key + "\",\"" + getValData(values) + "\"))&" + buildSetPredicates(values) + "\n";

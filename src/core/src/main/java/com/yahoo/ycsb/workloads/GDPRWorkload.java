@@ -191,7 +191,7 @@ public class GDPRWorkload extends Workload {
 
   public static final String USER_COUNT_PROPERTY = "usrcount";
 
-  public static final String USER_COUNT_PROPERTY_DEFAULT = "10000";
+  public static final String USER_COUNT_PROPERTY_DEFAULT = "16";
 
   public static final String OBJECTIVE_COUNT_PROPERTY = "objcount";
 

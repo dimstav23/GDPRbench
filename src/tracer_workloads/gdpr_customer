@@ -36,11 +36,11 @@ writeallfields=true
 dataintegrity=true
 
 # number of purposes allowed per KV pair
-purcount=64
+purcount=40
 # number of users
 usrcount=128
 # number of objections (ids start after purposes ids)
-objstart=64
+objstart=40
 objcount=64
 # users to share each KV pair with
 shrcount=10
