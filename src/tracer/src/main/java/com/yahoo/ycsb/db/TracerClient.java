@@ -428,7 +428,7 @@ public class TracerClient extends DB {
     String query;
     // Check if key ends with "_meta_only" suffix
     String suffix = "_meta_only";
-    
+
     if (key.endsWith(suffix)) {
       // Extract base key and generate get_meta query
       String baseKey = key.substring(0, key.length() - suffix.length());
@@ -502,7 +502,7 @@ public class TracerClient extends DB {
   @Override
   public Status insert(String table, String key,
       Map<String, ByteIterator> values) {
-
+    
     String query = "";
     if (key.startsWith("user")) {
       String sessionPred = "sessionKey(\"" + extractUserFromKey(key) + "\")";
@@ -597,6 +597,7 @@ public class TracerClient extends DB {
       // Regular put query for GDPR workloads
       /* always specify session key based on the condition */
       String sessionPred = "sessionKey(\"" + extractUserFromKey(key) + "\")";
+      query = "query(PUT(\"" + key + "\",\"" + mergeValues(values) + "\"))" + "&" + sessionPred + "\n";
     } else if (key.startsWith("key")) {
       // Regular put query
       query = "query(PUT(\"" + key + "\",\"" + getValData(values) + "\"))&" + buildSetPredicates(values) + "\n";
